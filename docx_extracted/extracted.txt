@@ -1,0 +1,931 @@
+﻿CI/CD and Deployment Guidelines for Developers
+Tzu Chi Foundation Malaysia
+Table of Contents
+Table of Contents1
+Document Control5
+1. Objectives6
+1.1 Promote Stability and Reliability6
+1.2 Enhance Security and Protect Sensitive Data6
+1.3 Reduce Operational Risks through Automation6
+1.4 Support Collaboration with External Development Teams7
+1.5 Enable Scalable, Long-Term Digital Growth7
+1.6 CI/CD Ownership and Responsibilities7
+1.6.1 DevOps Responsibilities8
+1.6.2 Vendor / Development Team Responsibilities8
+1.6.3 CI/CD Pipeline Governance Rules9
+2. Target Azure CI/CD Architecture10
+2.1 Overview10
+2.2 Architecture Diagram10
+2.3 Key Components10
+2.3.1 Git Repository (GitHub)10
+2.3.2 Azure Pipelines – Build + Test Scan (CI)11
+2.3.3 Azure Container Registry (ACR)11
+2.3.4 Azure Pipelines – Deploy (CD)12
+2.3.5 Azure Kubernetes Service (AKS)12
+2.4 CI/CD Platform Governance12
+2.4.1 Platform Ownership13
+2.4.2 Tooling Standardization13
+2.4.3 Build Agent Governance13
+2.4.4 Purpose of Platform Governance14
+3. Containerization Standards15
+3.1 Purpose of Containerization Standards15
+3.2 General Requirements for All Projects15
+3.3 Dockerfile Standards16
+3.3.1 Use Official, Trusted Base Images16
+3.3.2 Multi-Stage Builds (Strongly Recommended)16
+3.3.3 Application Runs as a Non-Root User16
+3.3.4 Do Not Embed Secrets16
+3.3.5 Expose Only Required Ports17
+3.3.6 Healthcheck (optional)17
+3.4 Image Tagging Standard17
+3.5 Image Pushing Rules17
+3.6 Configuration and Secrets Management18
+3.6.1 Secret Injection Requirements18
+3.6.2 Prohibited Practices19
+3.6.3 Vendor Implementation Requirement19
+3.7 Folder Structure Standard19
+3.8 Compliance20
+4. Required CI/CD Workflow21
+4.1 Overview of the Required Workflow21
+4.2 Continuous Integration (CI) Workflow21
+4.2.1 Code Checkout21
+4.2.2 Build Docker Image21
+4.2.3 Run Automated Tests22
+4.2.4 Security Scanning22
+4.2.5 Tag the Image22
+4.2.6 Push Image to Azure Container Registry (ACR)22
+4.2.7 Publish CI Artifacts (If Needed)22
+4.3 Continuous Deployment (CD) Workflow23
+4.3.1 Trigger CD Pipeline23
+4.3.2 Update Kubernetes Manifests23
+4.3.3 Apply Deployment to AKS23
+4.3.4 Post-Deployment Health Check23
+4.3.5 Rollback (If Required)24
+4.3.6 Rollback Implementation Standard24
+4.3.7 Failure Scenarios That Must Trigger Rollback24
+4.3.8 Vendor Responsibilities25
+4.4 Environment-Specific Requirements25
+4.4.1 Development / Testing25
+4.4.2 Staging (UAT)25
+4.4.3 Production26
+4.4.4 Deployment Approval Governance26
+Environments Requiring Approval26
+Approval Responsibilities26
+Vendor Expectations27
+Purpose of Deployment Approvals27
+4.5 Compliance Requirements27
+4.5.1 CI/CD Compliance Definition28
+4.6 CI/CD Pipeline Validation Requirements28
+4.6.1 Required Pipeline Validation Scenarios28
+4.6.2 Vendor Expectations29
+4.6.3 Purpose of Pipeline Validation29
+5. Repository Guidelines30
+5.1 Purpose of Repository Standards30
+5.2 Repository Structure Requirements30
+5.3 CI/CD Pipeline File Governance31
+5.3.1 Pipeline Ownership Rules31
+5.3.2 Purpose of Pipeline Standardization32
+5.4 Branching Strategy32
+5.4.1 Main Branch (“main” or “master”)32
+5.4.2 Development Branch (“develop”)32
+5.4.3 Feature Branches (“feature/*”)33
+5.4.4 Hotfix Branches (“hotfix/*”)33
+5.5 README File Requirements33
+5.6 Commit Message Guidelines33
+5.7 Pull Request Requirements34
+5.8 Git Ignore Standards34
+5.9 No Secrets in Repositories35
+5.10 Repository Access Rules35
+5.11 Repository Naming Conventions35
+6. Kubernetes Deployment Standards37
+6.1 Purpose of Kubernetes Standards37
+6.2 Required Kubernetes YAML Files37
+6.3 Deployment YAML Standards38
+6.3.1 Required Metadata Structure38
+6.3.2 Use of Labels38
+6.4 Container Configuration Standards38
+6.4.1 Image Must Use ACR38
+6.4.2 No Hardcoded Secrets39
+6.4.3 Resource Requests and Limits (Mandatory)39
+6.4.4 Health Probes (Strongly Recommended)39
+6.5 Replica Management40
+6.6 Strategy for Rolling Updates40
+6.7 Service YAML Standards40
+6.7.1 Required Basic Structure40
+6.8 Ingress YAML Standards (Recommended)41
+6.9 ConfigMap Standards41
+6.10 Kubernetes Secrets Standards42
+6.11 Namespace Standards42
+6.12 YAML Formatting & Folder Standards42
+7. Database Deployment Standards44
+7.1 Purpose of Database Deployment Standards44
+7.2 General Requirements44
+7.3 Supported Database Development Approaches44
+7.3.1 Code-first approach45
+7.3.2 Database-first approach45
+7.3.3 Hybrid approach45
+7.4 Migration Execution Model45
+7.5 Container Runtime Modes46
+7.6 Migration Deployment Sequence46
+7.7 Vendor Responsibilities47
+7.8 Recommended Migration Design Practices47
+7.9 Environments Without Database Changes48
+Document Control
+Date
+Author
+Description
+Version #
+22 December 2025
+Thomas Cheah
+First Draft
+0.0
+2 April 2026
+Thomas Cheah
+Updated CI/CD Guidelines based on CI/CD pilot implementation. Enhancements include CI/CD ownership model, pipeline governance rules, secret injection standards, rollback implementation standards, database migration CI/CD standards, deployment approval governance, pipeline validation requirements, and CI/CD platform governance.
+0.1
+1. Objectives
+Tzu Chi Foundation Malaysia aims to build digital systems that are reliable, secure, and sustainable, in order to support our humanitarian missions effectively. To achieve this, our organization follows a set of clear goals for Continuous Integration and Continuous Deployment (CI/CD). These goals ensure that all software projects delivered by internal or outsourced teams meet consistent quality, security, and operational standards.
+1.1 Promote Stability and Reliability
+Tzu Chi’s digital systems support core operations such as volunteer management, donation processing, event coordination, and community outreach.
+Because these systems are critical, our CI/CD pipelines must:
+Detect issues early through automated testing
+Ensure new features do not break existing functionality
+Provide predictable, repeatable deployments
+Reliable CI/CD processes reduce downtime, prevent regressions, and ensure smooth service to our communities.
+1.2 Enhance Security and Protect Sensitive Data
+As a humanitarian and charitable organization, Tzu Chi handles sensitive information about volunteers, donors, beneficiaries, and internal operations.
+Our CI/CD pipelines must therefore:
+Enforce secure coding and deployment practices
+Prevent leakage of credentials, tokens, or private data
+Ensure deployments occur in controlled, auditable environments
+Security is a core value, not optional.
+1.3 Reduce Operational Risks through Automation
+Manual deployment steps introduce human error, inconsistencies, and vulnerabilities.
+Tzu Chi’s CI/CD goals emphasize automation so that:
+Builds, tests, and deployments follow a standard, validated process
+No manual intervention is required for routine releases
+Developers do not need direct access to production servers
+Automation ensures safer and more reliable services for the public.
+1.4 Support Collaboration with External Development Teams
+Many of Tzu Chi’s systems are built or maintained by outsourced vendors.
+To ensure quality and consistency, our CI/CD pipelines aim to:
+Provide a standardized workflow for all developers
+Allow smooth handover and onboarding
+Ensure traceability of code changes and deployments
+Maintain organizational control over repositories and deployment processes
+This allows multiple teams to contribute without compromising quality or safety.
+1.5 Enable Scalable, Long-Term Digital Growth
+Tzu Chi’s operations are expanding, and our digital systems must evolve with them.
+Our CI/CD goals support long-term growth by:
+Using cloud-native tools like Azure Pipelines, ACR, and AKS
+Standardizing architecture across projects
+Making deployments repeatable and scalable
+This ensures Tzu Chi’s technology foundation remains strong for future humanitarian needs.
+1.6 CI/CD Ownership and Responsibilities
+To ensure consistency, security, and operational stability across all software projects, Tzu Chi Foundation Malaysia defines clear ownership boundaries between internal DevOps teams and external development vendors.
+CI/CD infrastructure is considered part of Tzu Chi’s core operational platform and is therefore centrally governed.
+1.6.1 DevOps Responsibilities
+The Tzu Chi DevOps team is responsible for managing and maintaining the CI/CD platform, including:
+Azure DevOps pipelines and pipeline templates
+Azure Container Registry (ACR)
+Azure Kubernetes Service (AKS) clusters and namespaces
+Azure Key Vault and secrets management integration
+Build agents and execution environments
+Security scanning tools and quality gates
+Deployment approval workflows
+Rollback mechanisms
+Environment access control and RBAC configuration
+DevOps also defines the standard CI/CD workflow that all projects must follow.
+1.6.2 Vendor / Development Team Responsibilities
+Development teams (internal or outsourced) are responsible for delivering applications that comply with Tzu Chi CI/CD requirements, including:
+Application source code
+Automated tests
+Dockerfile implementation
+Application configuration structure
+Database migration scripts (if applicable)
+Application entrypoint scripts
+Required Kubernetes manifests (where applicable)
+Vendors must ensure their applications can successfully build, test, and deploy using Tzu Chi’s standardized pipelines.
+1.6.3 CI/CD Pipeline Governance Rules
+To maintain consistency and security:
+CI/CD pipeline definitions are owned and maintained by Tzu Chi DevOps
+Vendors must not modify pipeline workflow logic unless explicitly approved
+Vendors must not introduce alternative deployment mechanisms
+Vendors must not bypass CI/CD controls through manual deployments
+All production deployments must flow through Tzu Chi CI/CD pipelines
+This ensures that all systems remain maintainable, secure, and transferable between vendors over time.
+2. Target Azure CI/CD Architecture
+Tzu Chi Foundation Malaysia adopts a modern, cloud-native CI/CD architecture built on Microsoft Azure. This architecture is designed to ensure secure, automated, and consistent delivery of applications across all development teams, including outsourced vendors. It eliminates manual deployment risks and provides a unified approach suitable for Tzu Chi’s long-term digital goals.
+2.1 Overview
+Tzu Chi’s target CI/CD architecture standardizes how applications are:
+Built
+Tested
+Packaged into container images
+Pushed to Azure Container Registry (ACR)
+Deployed to Azure Kubernetes Service (AKS)
+These steps are handled fully by Azure Pipelines, ensuring end-to-end automation.
+2.2 Architecture DiagramDevelopersTzu Chi GitHubAzure PipelinesBuild + Test + ScanAzure Container Registry (ACR)Azure PipelinesDeployAzure Kubernetes ServiceTzu Chi Secure SDLC Environment
+Developers
+Tzu Chi GitHub
+Azure Pipelines
+Build + Test + Scan
+Azure Container Registry (ACR)
+Azure Pipelines
+Deploy
+Azure Kubernetes Service
+Tzu Chi Secure SDLC Environment
+This architecture ensures that deployments are controlled, auditable, and fully automated.
+2.3 Key Components
+2.3.1 Git Repository (GitHub)
+All source code for Tzu Chi systems must live in Tzu Chi-owned GitHub repositories. Outsourced developers receive controlled access following Tzu Chi’s security policies.
+The repository acts as the single source of truth for:
+Code
+Infrastructure definitions
+Deployment manifests
+2.3.2 Azure Pipelines – Build + Test Scan (CI)
+Triggered whenever a developer pushes code or opens a pull request.
+The CI pipeline performs:
+Code checkout
+Docker image build
+Automated tests
+Security scanning (based on Tzu Chi Secure SDLC Policy)
+Tagging the image (using Git SHA or versioning rules)
+Pushing the image to ACR
+This ensures consistent, secure, and reproducible builds across all projects.
+2.3.3 Azure Container Registry (ACR)
+ACR stores all container images used by Tzu Chi.
+This replaces manual pushes to Docker Hub and provides:
+Secure, Azure-integrated authentication
+Fast image pulls for AKS
+Role-based access control
+Centralized image management
+All images used in production must originate from ACR.
+2.3.4 Azure Pipelines – Deploy (CD)
+Tzu Chi uses Azure Pipelines (or GitOps for advanced setups) to deploy images to Kubernetes.
+The CD pipeline performs:
+Updating Kubernetes deployment files
+Applying new versions to AKS
+Performing health checks
+Rolling back automatically if needed
+Logging deployment history
+No manual SSH access to servers is required or allowed.
+2.3.5 Azure Kubernetes Service (AKS)
+AKS is the primary deployment environment for Tzu Chi applications.
+It provides:
+Secure, scalable infrastructure
+Resource isolation
+Easy rollback capabilities
+Integration with Azure monitoring, logging, and identity services
+All production and staging workloads run on AKS.
+2.4 CI/CD Platform Governance
+To ensure long-term maintainability and operational consistency, all CI/CD platforms and supporting tools are centrally governed by Tzu Chi Foundation Malaysia.
+Tooling decisions are made based on security, operational supportability, and long-term sustainability considerations.
+2.4.1 Platform Ownership
+The following CI/CD platform components are managed by Tzu Chi DevOps:
+Azure DevOps project configuration
+Build agents and execution environments
+Azure Container Registry configuration
+Azure Kubernetes Service environments
+Security scanning tools
+Code quality platforms
+Deployment approval workflows
+Monitoring and logging integrations
+Vendors are not required to configure or manage these components.
+2.4.2 Tooling Standardization
+To maintain consistency across projects:
+CI/CD tools are standardized across Tzu Chi projects
+Vendors must use the provided CI/CD platform
+Vendors must not introduce alternative CI/CD platforms without approval
+Vendors must not introduce parallel deployment pipelines
+Examples of prohibited practices include:
+Using external CI/CD platforms for official deployments
+Deploying from personal infrastructure
+Using non-approved container registries
+Introducing alternative production deployment paths
+2.4.3 Build Agent Governance
+Build agents are managed by Tzu Chi DevOps to ensure:
+Security patching
+Tool consistency
+Cost control
+Execution reliability
+Vendors must not:
+Install software on build agents
+Modify agent configurations
+Depend on agent-specific configurations
+Require dedicated agents unless approved
+Pipelines must remain portable across approved build environments.
+2.4.4 Purpose of Platform Governance
+Central platform governance ensures:
+Security consistency
+Operational stability
+Simplified vendor onboarding
+Reduced operational complexity
+Standardized troubleshooting
+This approach allows development teams to focus on delivering applications while Tzu Chi maintains control of deployment infrastructure.
+3. Containerization Standards
+To ensure consistent, secure, and maintainable deployments across all applications, Tzu Chi Foundation Malaysia requires all software projects, internal or outsourced, to follow standardized containerization practices. These standards apply to both new systems and legacy systems undergoing redevelopment.
+The goal is to create a uniform, reliable container environment that simplifies CI/CD automation, improves security, and reduces operational risks.
+3.1 Purpose of Containerization Standards
+Tzu Chi uses containers to:
+Ensure consistent application behavior across development, testing, and production
+Guarantee reproducible builds
+Reduce dependency conflicts
+Enable uniform deployment pipelines
+Improve security by isolating application environments
+Support long-term maintainability
+These standards help all teams follow the same baseline practices, regardless of the project’s tech stack.
+3.2 General Requirements for All Projects
+All Tzu Chi applications must:
+Use Docker as the container runtime
+Include a Dockerfile at the project root
+Use Azure Container Registry (ACR) as the image storage
+Use environment variables for configuration (no hardcoded secrets)
+Avoid storing secrets inside images or Git repositories
+Follow a consistent image tagging standard
+Ensure images are small, efficient, and secure
+These ensure repeatable deployments and safer CI/CD processes.
+3.3 Dockerfile Standards
+All development teams must ensure the Dockerfile follows these best practices:
+3.3.1 Use Official, Trusted Base Images
+Examples (depending on stack):
+Node:18-alpine
+Python:3.11-slim
+mcr.microsoft.com/dotnet/aspnet:8.0
+This ensures high security and regular patching.
+3.3.2 Multi-Stage Builds (Strongly Recommended)
+Use a build stage and a runtime stage to:
+Reduce image size
+Improve security
+Avoid shipping development tools into production images
+3.3.3 Application Runs as a Non-Root User
+This is to minimize security risks.
+3.3.4 Do Not Embed Secrets
+No passwords, tokens, or API keys in:
+Dockerfile
+Code
+Image layers
+Secrets must be provided at runtime via Azure Key Vault or Kubernetes secrets.
+3.3.5 Expose Only Required Ports
+Clear documentation helps AKS configurations remain predictable.
+3.3.6 Healthcheck (optional)
+Useful for AKS readiness and liveness probes.
+3.4 Image Tagging Standard
+Tzu Chi adopts a predictable tagging format for CI/CD:
+{project-name}:{git-commit-sha}
+Optionally for releases:
+{project-name}:v{version}
+This ensures:
+Every build is traceable
+No accidental overwrites
+Easier rollbacks
+Example:
+donation-relation-management:4f21a3b
+3.5 Image Pushing Rules
+Only CI pipelines may:
+Tag images
+Push images to ACR
+Developers must not push images manually from their local machines.
+This ensures:
+Build reproducibility
+Stronger security
+Consistent tagging
+Auditability
+3.6 Configuration and Secrets Management
+Projects must use:
+Environment variables for configuration
+Azure Key Vault for secrets
+Kubernetes Secrets for runtime injection
+Never commit secrets to Git repositories
+This is crucial to protect donor, volunteer, and internal data.
+3.6.1 Secret Injection Requirements
+Applications must be designed to receive secrets dynamically at runtime rather than through static configuration.
+Approved secret injection methods include:
+Azure Key Vault integration via Azure DevOps pipeline
+Azure Key Vault integration via Kubernetes CSI driver
+Kubernetes Secrets injected as environment variables
+Pipeline variables provided during deployment
+Applications must read secrets from:
+Environment variables
+Runtime configuration providers
+Secure secret providers supported by the application framework
+Applications must not depend on secrets stored in local configuration files.
+3.6.2 Prohibited Practices
+The following practices are strictly prohibited:
+Embedding secrets inside application code
+Storing secrets inside Docker images
+Storing secrets inside configuration files committed to Git
+Injecting secrets during image build time
+Using developer local secrets for deployed environments
+All secrets must be injected only during deployment or runtime.
+3.6.3 Vendor Implementation Requirement
+Vendors must ensure their applications:
+Can start without hardcoded secrets
+Fail safely if required secrets are missing
+Support environment-based configuration
+Support secret rotation without code changes
+This ensures applications remain portable, secure, and compatible with Tzu Chi’s CI/CD automation model.
+3.7 Folder Structure Standard
+Each project repo should follow this structure:
+/project-root  /src  /tests  Dockerfile  README.md  azure-pipelines.yml
+3.8 Compliance
+All outsourced teams must ensure their Dockerfiles and container setups comply with Tzu Chi’s Secure SDLC Policy.
+During code review, the DevOps team or responsible internal engineer will verify compliance.
+Non-standard setups must be justified and approved before merging.
+4. Required CI/CD Workflow
+Tzu Chi Foundation Malaysia standardizes its Continuous Integration and Continuous Deployment (CI/CD) processes using Azure Pipelines. This ensures all applications, regardless of which outsourced vendor or internal team develops them, are delivered in a consistent, secure, and automated manner.
+The workflow described below must be followed by all projects, providing a predictable and reliable
+4.1 Overview of the Required Workflow
+The required workflow consists of two major stages:
+Continuous Integration (CI): Build → Test → Scan → Package → Push to ACR
+Continuous Deployment (CD): Deploy → Validate → Rollback (if needed)
+Azure Pipelines automates the entire lifecycle without manual intervention from developers or operators.
+4.2 Continuous Integration (CI) Workflow
+Triggered by a push or pull request, the CI pipeline ensures that code is tested, validated, and packaged consistently.
+The CI workflow must follow these steps:
+4.2.1 Code Checkout
+Azure Pipelines pulls the latest version of the application code from Tzu Chi’s official Git repository.
+4.2.2 Build Docker Image
+The pipeline uses the project’s Dockerfile (as per Tzu Chi’s containerization standards) to build the application image in a clean, controlled environment.
+This replaces all manual local builds.
+4.2.3 Run Automated Tests
+If the project includes tests (unit, integration, or API tests), they must be executed during CI.
+Failing tests block further steps.
+All projects must include at least minimal automated tests appropriate to the application type (for example unit tests, API tests, or integration tests).
+Projects delivered without automated tests may be rejected during technical review unless explicitly approved.
+4.2.4 Security Scanning
+The CI pipeline should also run:
+Code quality checks
+Static analysis
+Container image scanning
+This supports Tzu Chi’s commitment to secure development lifecycle.
+4.2.5 Tag the Image
+Images must be tagged using Tzu Chi’s standardized tagging format:
+{project-name}:{git-commit-sha}
+This ensures traceability and safe rollback operations.
+4.2.6 Push Image to Azure Container Registry (ACR)
+Only the CI pipeline is permitted to push images to ACR.
+Developers must never push images manually.
+4.2.7 Publish CI Artifacts (If Needed)
+Optional artifacts such as configuration files, manifests, or reports may be published for use in the CD stage.
+4.3 Continuous Deployment (CD) Workflow
+The CD pipeline ensures that tested, validated images are deployed consistently to the designated environment (staging or production).
+4.3.1 Trigger CD Pipeline
+The CD pipeline is triggered when:
+A new image is pushed to ACR
+OR a specific branch/tag is updated
+OR a manual approval is granted (for production)
+This ensures deployments remain controlled and predictable.
+4.3.2 Update Kubernetes Manifests
+The pipeline injects the new image tag (e.g., project:4f21a3b) into Kubernetes Deployment YAML
+This ensures AKS always pulls the correct version.
+4.3.3 Apply Deployment to AKS
+Azure Pipelines executes the deployment using:
+kubectl apply
+No developer or operator should log into servers to deploy.
+4.3.4 Post-Deployment Health Check
+The pipeline verifies that:
+Pods are running correctly
+Health probes pass
+No errors occur in logs
+If issues are detected, deployment does not continue.
+4.3.5 Rollback (If Required)
+If the application fails health checks or causes issues:
+Azure Pipelines performs a rollback to the previous working image
+Rollback steps are automated to minimize downtime
+This is essential to maintain reliable services for Tzu Chi volunteers, donors, and internal teams.
+4.3.6 Rollback Implementation Standard
+Rollback mechanisms must be implemented within the CI/CD pipeline rather than relying solely on Kubernetes deployment behavior.
+While Kubernetes can detect unhealthy deployments, automated rollback decisions must be controlled by Azure Pipelines to ensure visibility, logging, and governance.
+The CI/CD pipeline must:
+Monitor deployment rollout status
+Detect deployment failures (for example failed probes, failed pods, or image errors)
+Trigger rollback to the last known stable version when required
+Mark the pipeline execution as failed when rollback occurs
+Record deployment and rollback events for audit purposes
+Typical rollback flow should follow this pattern:
+Deploy application
+→ Monitor rollout status
+→ Detect failure
+→ Trigger rollback
+→ Fail pipeline with deployment report
+4.3.7 Failure Scenarios That Must Trigger Rollback
+CI/CD pipelines should be capable of detecting failures such as:
+Container startup failures
+Readiness or startup probe failures
+Invalid container images
+Configuration errors
+Resource constraint failures
+Application runtime failures
+4.3.8 Vendor Responsibilities
+Vendors must ensure their applications:
+Support health endpoints for readiness checks
+Start within reasonable timeframes
+Fail clearly when configuration errors occur
+Do not disable health probes required by CI/CD deployment standards
+This ensures that automated deployment safety mechanisms function correctly.
+4.4 Environment-Specific Requirements
+Azure Pipelines may include different stages depending on the environment:
+4.4.1 Development / Testing
+Automated deploys
+Can be triggered on every commit
+Faster iteration for developers
+4.4.2 Staging (UAT)
+Deployment requires approval
+Used for final testing and validation
+Mirrors production as closely as possible
+4.4.3 Production
+Deployment always requires formal approval
+Strict access control
+Rollbacks monitored carefully
+This ensures Tzu Chi maintains a high standard of operational stability.
+4.4.4 Deployment Approval Governance
+To ensure operational stability and security, deployments to controlled environments must follow formal approval processes defined by Tzu Chi Foundation Malaysia.
+Approval workflows are implemented within Azure DevOps pipelines to ensure proper governance and auditability.
+Environments Requiring Approval
+The following environments typically require approval before deployment:
+Staging (UAT) environments
+Production environments
+Security-related fixes
+Major feature releases
+Database migration deployments
+Development environments may allow automated deployment where appropriate.
+Approval Responsibilities
+Approvals may be assigned to:
+Tzu Chi DevOps team
+System owners
+Project managers
+Designated technical reviewers
+Approval assignments are managed internally by Tzu Chi and are not controlled by vendors.
+Vendor Expectations
+Vendors must understand that:
+Deployment approval is part of the release process
+Deployment timing may depend on approval availability
+Emergency deployments must still follow approval procedures unless waived by Tzu Chi
+Vendors must not attempt to bypass approval workflows
+Purpose of Deployment Approvals
+Approval governance ensures:
+Deployment readiness verification
+Security validation
+Operational scheduling control
+Separation of development and deployment authority
+Clear audit history of production releases
+This ensures controlled and predictable system releases across all Tzu Chi systems.
+4.5 Compliance Requirements
+All outsourced teams must adhere to Tzu Chi’s Azure Pipelines workflow.
+No local manual builds
+No manual tagging or pushing images
+No manual access to production servers
+All deployments must go through Azure Pipelines
+Any deviation must be reviewed and approved beforehand
+This uniform workflow ensures that Tzu Chi’s systems remain stable, secure, and maintainable over the long term.
+4.5.1 CI/CD Compliance Definition
+A project is considered CI/CD compliant when:
+Source code is stored in Tzu Chi repositories
+Builds run successfully through Azure Pipelines
+Automated tests pass
+Security scans pass
+Container images are built via CI
+Deployment occurs through approved pipelines
+No manual production deployment exists
+Projects that do not meet these criteria may not be approved for production deployment.
+4.6 CI/CD Pipeline Validation Requirements
+To ensure CI/CD pipelines remain reliable and safe for production use, pipelines must be validated not only for successful deployment scenarios but also for failure handling behavior.
+CI/CD pipelines must be capable of detecting failures and responding safely according to Tzu Chi deployment standards.
+4.6.1 Required Pipeline Validation Scenarios
+CI/CD implementations should be tested against failure scenarios such as:
+Failed automated tests
+Failed security scans
+Invalid container images
+Deployment failures
+Health probe failures
+Configuration errors
+Missing secrets
+Resource constraint failures
+The objective is to confirm that the pipeline:
+Stops deployment when failures occur
+Prevents invalid images from being deployed
+Triggers rollback when required
+Provides clear failure visibility
+4.6.2 Vendor Expectations
+Vendors must ensure:
+Applications fail clearly when errors occur
+Applications support health monitoring endpoints
+Applications do not suppress critical errors
+Applications can be validated through automated CI/CD checks
+Vendors are not required to design the pipeline itself, but must ensure their applications behave correctly within automated deployment environments.
+4.6.3 Purpose of Pipeline Validation
+Pipeline validation ensures:
+Reliable automated deployments
+Early detection of defects
+Safe failure handling
+Reduced operational incidents
+Confidence in automated release processes
+This strengthens Tzu Chi’s ability to maintain stable and secure digital systems.
+5. Repository Guidelines
+To maintain consistency, quality, and long-term maintainability across all Tzu Chi software projects, Tzu Chi Foundation Malaysia requires all internal and outsourced teams to follow a standardized set of repository guidelines. These guidelines apply to any project stored under Tzu Chi’s official Git management platform (e.g., Azure Repos or GitHub).
+The goal is to ensure that every repository is well-organized, easy to maintain, and supports reliable CI/CD automation.
+5.1 Purpose of Repository Standards
+These standards help Tzu Chi:
+Maintain clear and predictable project structures
+Enable smooth onboarding for future developers
+Support automated tools such as CI/CD, code scanning, and security validation
+Prevent inconsistent repository organization that leads to delays and errors
+Reduce reliance on any individual developer or outsourced vendor
+Ultimately, these guidelines strengthen the sustainability of Tzu Chi’s digital systems.
+5.2 Repository Structure Requirements
+All Tzu Chi project repositories must follow a clear and consistent folder structure to simplify development and deployments.
+The standard structure is:
+/project-root  /src               → Application code    /tests             → Unit / integration tests    /docs              → Project documentation (optional)  Dockerfile         → Required for containerization    README.md          → Required project summary    azure-pipelines.yml → Required CI/CD pipeline definition  
+This is optional but encouraged:
+/k8s  deployment.yaml  service.yaml  ingress.yaml  configmap.yaml
+This structure helps ensure alignment with Azure Pipelines and AKS.
+5.3 CI/CD Pipeline File Governance
+To maintain consistency and operational control, CI/CD pipeline definitions are standardized and centrally managed by Tzu Chi Foundation Malaysia.
+All projects must include the required pipeline definition file (for example: azure-pipelines.yml) as part of the repository structure. However, ownership of the pipeline workflow remains with the Tzu Chi DevOps team.
+5.3.1 Pipeline Ownership Rules
+The CI/CD pipeline structure, stages, and deployment logic are controlled by Tzu Chi DevOps and must not be altered without approval.
+Vendors and development teams must not:
+Modify pipeline stages or workflow sequence
+Remove security scanning or quality checks
+Change deployment logic or environments
+Modify approval gates
+Introduce alternative CI/CD tools without approval
+Bypass CI/CD by introducing manual deployment steps
+If application-specific adjustments are required, vendors should instead modify:
+Application code
+Dockerfile
+Environment configuration
+Kubernetes manifests (where required)
+Application entrypoint scripts
+Database migration scripts
+Any pipeline change requests must be reviewed and approved by the Tzu Chi DevOps team before implementation.
+5.3.2 Purpose of Pipeline Standardization
+Central pipeline governance ensures:
+Consistent security enforcement
+Predictable deployments
+Easier maintenance across vendors
+Reduced operational risk
+Standardized troubleshooting processes
+This approach ensures that Tzu Chi retains operational ownership of deployment processes while allowing vendors to focus on application delivery.
+5.4 Branching Strategy
+Tzu Chi standardizes branching to ensure predictable workflows:
+5.4.1 Main Branch (“main” or “master”)
+Always stable
+Always deployable
+Protected with required pull request reviews
+5.4.2 Development Branch (“develop”)
+For ongoing development work
+CI runs automatically on commits
+5.4.3 Feature Branches (“feature/*”)
+One branch per feature
+Must be merged via pull request
+Must pass CI checks before merge
+5.4.4 Hotfix Branches (“hotfix/*”)
+For urgent production fixes
+Must follow streamlined review + CI
+Deployment handled via Azure Pipelines
+A consistent branching strategy improves version control cleanliness and reduces integration issues.
+5.5 README File Requirements
+Every repository must include a clear and updated README.md, containing:
+Project purpose and ownership (Tzu Chi department/unit)
+Tech stack used
+Setup instructions for development environment
+Build and test instructions
+CI/CD overview
+Deployment environments (dev/staging/prod)
+Contact person or team
+This ensures continuity even if developers or vendors change.
+5.6 Commit Message Guidelines
+To maintain clarity and traceability, all developers must follow standard commit message practices:
+Use short but descriptive messages
+Use imperative language (e.g., “Add”, “Fix”, “Improve”)
+Reference issue or ticket numbers where applicable
+All commit messages must include a valid issue or ticket identifier (e.g. Jira key) when the change is related to a tracked task, bug, or feature. This enables automatic linking between the source code repository and the issue tracking system for full traceability.
+Example:
+Add volunteer activity API endpoint (TC-142)Fix data parsing error in donation import module (TC-155)Update Dockerfile to support multi-stage build (TC-201)
+Clear commit messages with referenced issue or ticket numbers help maintain project history, enable commit-to-ticket traceability, and simplify reviews, audits, and compliance verification. 
+5.7 Pull Request Requirements
+Pull requests (PRs) must adhere to:
+At least one reviewer for all merges into main or develop
+All CI checks must pass before merge
+Clear description of the changes
+Links to related issues/tickets
+Screenshots (where applicable)
+PR templates may be provided to vendors for consistency.
+5.8 Git Ignore Standards
+Every repository must include a .gitignore file that excludes:
+Secrets or environment files (e.g., .env, secrets.json)
+Build output or logs (e.g., bin/, .dist/, *.log)
+Temporary or OS files (e.g., .DS_Store, Thumbs.db)
+IDE-specific files (e.g., .vscode/, .idea/)
+Dependency directories (e.g., node_modules/, packages/, vendor/)
+This prevents accidental leaks and keeps repos clean.
+5.9 No Secrets in Repositories
+Absolutely no secrets may be committed under any circumstances.
+This includes:
+API keys
+Passwords
+Cloud credentials
+JWT signing keys
+Certificates
+SSH private keys
+Security-sensitive data must always be stored in Azure Key Vault or Kubernetes Secrets, never in Git.
+5.10 Repository Access Rules
+To protect sensitive systems related to volunteers, donors, events, and internal operations:
+Only authorized developers may access specific repositories
+Access is removed when vendors complete their engagement
+Admin roles are strictly limited
+Production branches are protected and require approvals
+These rules prevent unauthorized access and accidental modifications.
+5.11 Repository Naming Conventions
+Repositories must follow clear, descriptive naming patterns:
+donation-relationship-managementvolunteer-administration-portalvolunteer-information-system
+Names should be lowercase, hyphen-separated, and meaningful.
+6. Kubernetes Deployment Standards
+Tzu Chi Foundation Malaysia adopts Azure Kubernetes Service (AKS) as the core platform for container orchestration. To ensure all applications deployed on AKS remain consistent, secure, and maintainable, all teams, internal or outsourced, must follow these standardized Kubernetes YAML conventions.
+These guidelines ensure that every deployment is predictable, easy to review, and compatible with Tzu Chi’s CI/CD workflows.
+6.1 Purpose of Kubernetes Standards
+These standards help Tzu Chi:
+Maintain a uniform deployment approach across all systems
+Improve security through consistent configurations
+Enable seamless integration with Azure Pipelines
+Simplify maintenance and operational troubleshooting
+Ensure predictable rollouts and safe rollbacks
+Consistency is essential for long-term stability and sustainability of Tzu Chi’s secure development lifecycle.
+6.2 Required Kubernetes YAML Files
+Each application deployed to AKS must include the following YAML files inside a /k8s folder in the repository:
+/k8s  deployment.yaml  service.yaml  ingress.yaml         (optional but recommended)  configmap.yaml       (if needed)secret.yaml          (if not using Azure Key Vault)
+The secret.yaml file should only define the structure and names of the secrets required by the application.
+Real secret values must never be included.
+These files must be part of the repository to ensure full CI/CD automation and consistent application deployment.
+6.3 Deployment YAML Standards
+The Deployment file defines how the application is run inside AKS. The following standards must be applied to all deployments.
+6.3.1 Required Metadata Structure
+apiVersion: apps/v1kind: Deploymentmetadata:  name: {app-name}  labels:    app: {app-name}
+Naming must follow Tzu Chi conventions: lowercase, hyphen separated.
+6.3.2 Use of Labels
+Labels must include:
+labels:  app: {app-name}  tier: backend|frontend|worker  env: dev|staging|prod
+Labels support monitoring, filtering, and debugging.
+6.4 Container Configuration Standards
+The containers section must comply with Tzu Chi’s image and security rules.
+6.4.1 Image Must Use ACR
+image: tzuichiacr.azurecr.io/{project}:{tag}
+Tags must follow CI/CD standards.
+6.4.2 No Hardcoded Secrets
+Environment variables referencing secrets must use:
+Kubernetes Secrets, or
+Azure Key Vault via CSI Driver
+The secret.yaml file in the repository may define the secret names and keys, but it must not contain actual values.
+Under no circumstances may real secrets be stored inside:
+YAML files
+Git repositories
+Docker images
+Application code
+All real secret values must be injected securely during runtime.
+6.4.3 Resource Requests and Limits (Mandatory)
+Each container must define CPU and memory constraints:
+resources:  requests:    cpu: "100m"    memory: "256Mi"  limits:    cpu: "500m"    memory: "512Mi"
+This prevents resource abuse and ensures cluster stability.
+6.4.4 Health Probes (Strongly Recommended)
+livenessProbe:  httpGet:    path: /health    port: 8080  initialDelaySeconds: 10readinessProbe:  httpGet:    path: /ready    port: 8080  initialDelaySeconds: 5
+Health probes ensure smooth rolling updates.
+6.5 Replica Management
+To maintain reliability, deployments must specify replicas:
+spec:  replicas: 2
+Higher values may be required for production environments, depending on workload.
+6.6 Strategy for Rolling Updates
+All deployments must use rolling update strategy to allow zero-downtime deployments:
+strategy:  type: RollingUpdate  rollingUpdate:    maxUnavailable: 0    maxSurge: 1
+This ensures safe, gradual rollout across AKS nodes.
+6.7 Service YAML Standards
+Services expose deployments internally or externally.
+6.7.1 Required Basic Structure
+apiVersion: v1kind: Servicemetadata:  name: {app-name}-svcspec:  selector:    app: {app-name}  ports:    - port: 80      targetPort: 8080  type: ClusterIP
+Default type should be ClusterIP. External exposure must go through an Ingress.
+6.8 Ingress YAML Standards (Recommended)
+Ingress controls external access:
+apiVersion: networking.k8s.io/v1kind: Ingressmetadata:  name: {app-name}-ingress  annotations:    kubernetes.io/ingress.class: nginxspec:  rules:    - host: {your-app}.{tzu-chi-domain}      http:        paths:          - path: /            pathType: Prefix            backend:              service:                name: {app-name}-svc                port:                  number: 80
+Ingress rules ensure clean routing and centralized SSL management.
+6.9 ConfigMap Standards
+ConfigMaps store non-sensitive configuration values.
+apiVersion: v1
+kind: ConfigMapmetadata:  name: {app-name}-configdata:  APP_MODE: production  LOG_LEVEL: info
+Sensitive data must not be stored here.
+6.10 Kubernetes Secrets Standards
+Secrets must be used for:
+DB credentials
+API keys
+Tokens
+Certificates
+Example (base64 encoded values):
+apiVersion: v1kind: Secretmetadata:  name: {app-name}-secrettype: Opaquedata:  DB_PASSWORD: <base64>
+For production, Tzu Chi strongly prefers Azure Key Vault over direct K8s secrets.
+6.11 Namespace Standards
+All deployments must occur inside structured namespaces:
+project-name-dev
+project-name-staging
+project-name-prod
+This ensures strict separation between environments.
+6.12 YAML Formatting & Folder Standards
+One logical resource per YAML file
+Use lowercase for all resource names
+Indentation must be 2 spaces
+No tabs allowed
+Avoid extremely long single-line annotations
+Consistency improves readability and reduces errors during deployment.
+7. Database Deployment Standards
+7.1 Purpose of Database Deployment Standards
+To ensure consistency, traceability, and operational safety, all database changes must follow the same CI/CD deployment model as application code.
+Manual database updates create operational risks such as:
+Environment inconsistencies
+Deployment failures
+Data corruption risks
+Lack of audit traceability
+Vendor dependency risks
+Tzu Chi requires all database changes to be version-controlled and deployed through CI/CD pipelines.
+7.2 General Requirements
+All database changes must:
+Be stored in the project repository
+Be version controlled
+Be deployed through Azure DevOps pipelines
+Be tested before deployment
+Be traceable to application versions
+Manual database updates to staging or production environments are not allowed unless explicitly approved.
+7.3 Supported Database Development Approaches
+Tzu Chi CI/CD supports multiple database development approaches including:
+7.3.1 Code-first approach
+Examples:
+.NET EF Core migrations
+Java Flyway migrations
+Liquibase migrations
+Pipeline executes migration commands automatically.
+7.3.2 Database-first approach
+Developers may provide SQL migration scripts such as:
+V20240301_add_user_status.sql
+Pipeline executes scripts using migration tools.
+7.3.3 Hybrid approach
+Projects may combine:
+Schema migrations
+Data migrations
+Seed scripts
+The CI/CD requirement applies regardless of development approach.
+The objective is to standardize deployment, not development methodology.
+7.4 Migration Execution Model
+Database migrations should be executed using controlled runtime execution methods such as:
+Kubernetes Jobs
+Pipeline execution tasks
+Migration containers
+Kubernetes Jobs are recommended because they:
+Avoid database firewall exposure
+Avoid credential duplication
+Simplify secret management
+Provide execution traceability
+7.5 Container Runtime Modes
+Applications shall support multiple runtime modes to support CI/CD deployment patterns.
+Examples include:
+APP_MODE=app
+APP_MODE=migration
+APP_MODE=seed
+This allows a single container image to support:
+Application runtime
+Database migration
+Data seeding
+This approach improves deployment consistency and reduces configuration drift.
+7.6 Migration Deployment Sequence
+Where database changes exist, the deployment sequence should follow:
+Build application image
+→ Push image to registry
+→ Execute database migration
+→ Execute seed scripts (if required)
+→ Deploy application
+→ Verify deployment health
+Database migration must complete successfully before application deployment proceeds.
+7.7 Vendor Responsibilities
+Vendors must ensure:
+Database migrations are included in the repository
+Migration scripts are tested before submission
+Migrations are backward compatible
+Applications remain functional during staged deployments
+Failed migrations do not leave the database in inconsistent states
+Vendors must not:
+Apply manual database updates
+Provide unversioned SQL scripts
+Mix manual database processes with CI/CD deployment
+7.8 Recommended Migration Design Practices
+To reduce operational risk, vendors should follow safe migration practices:
+Prefer backward compatible changes
+Make migrations idempotent where possible
+Prefer additive changes over destructive changes
+Avoid immediate removal of columns
+Avoid renaming columns directly (duplicate and migrate instead)
+Avoid immediate NOT NULL constraints
+Separate schema migrations from data migrations
+Ensure migrations can be safely retried
+These practices improve reliability of automated deployments.
+7.9 Environments Without Database Changes
+If no migration exists:
+Pipeline migration stage runs normally.
+No changes detected.
+Deployment continues.
+This ensures consistent deployment workflows.
