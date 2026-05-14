@@ -1,4 +1,4 @@
-## CI/CD & Deployment Guidelines — Fun Summary 🎉
+## CI/CD & Deployment Guidelines 🎉
 
 Hey there 👋
 
