@@ -1,2 +1,2 @@
 # .github
-Organization Readme Repo.
+Organization Public Readme Repo.
